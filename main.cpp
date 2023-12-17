@@ -11,27 +11,30 @@ const int SIZE = 10005;
 
 using namespace std;
 
-vector<vector<int>> adjacency_list (SIZE);    //список смежности
 vector<int> tin;    //время захода в вершину
 vector<int> fup;    //fup[i] - минимум из: tin[i], tin всех обратных рёбер из вершины i, fup всех потомков i в дереве поиска
 vector<int> was;    //массив посещённых вершин
-int t, n;
+int t;
 
-vector<pair<int, int>> edges_isthmuses;
+void clear_adjlist (vector<vector<int>>& adjacency_list, int n) {
+    for (int j = 0; j < n; j++)
+        adjacency_list[j].clear();
+}
 
-void init(){    //инициализирующая функция
+void init(vector<pair<int, int>>& edges_isthmuses, int n){    //инициализирующая функция
     t = 0;
     was.clear();
     tin.clear();
     fup.clear();
-    for(int i=0; i<n; i++){
+    for(int i = 0; i < n; i++){
         was.push_back(false);
         tin.push_back(0);
         fup.push_back(0);
     }
+    edges_isthmuses.clear();
 }
 
-void dfs(int src, int parent = -1){
+void dfs(int src, vector<vector<int>>& adjacency_list, vector<pair<int, int>>& edges_isthmuses, int parent = -1){
     was[src] = true;    //отмечаем, что вершина посещена
     tin[src] = t;    //записываем время захода в вершину
     fup[src] = t;
@@ -43,19 +46,23 @@ void dfs(int src, int parent = -1){
         if (was[fin] && fin != parent)    //если ребро обратное, то обновляем fup
             fup[src] = min(fup[src], tin[fin]);
         if (!was[fin]) {    //если это ребро dfs дерева, то
-            dfs(fin, src);    //запускаем dfs из этой вершины
+            dfs(fin, adjacency_list, edges_isthmuses, src);    //запускаем dfs из этой вершины
             fup[src] = min(fup[src], fup[fin]);    //обновляем fup
-            if (fup[fin] > tin[src])    //если fup смежной вершины больше, чем tin исходной, значит, нет ребра между src и её предками и fin и её потомками
-                cout << "!" << src + 1 << " " << fin + 1  << "!"<< endl;
+            if (fup[fin] > tin[src]) {   //если fup смежной вершины больше, чем tin исходной, значит, нет ребра между src и её предками и fin и её потомками
+                pair<int, int> p;
+                p.first = src + 1;
+                p.second = fin + 1;
+                edges_isthmuses.push_back(p);
+            }
         }
     }
 }
 
-void isthmus(){
-    init();
-    for (int i=0; i<n; i++){
+void isthmus(vector<vector<int>>& adjacency_list, vector<pair<int, int>>& edges_isthmuses, int n){
+    init(edges_isthmuses, n);
+    for (int i = 0; i < n; i++){
         if (!was[i])
-            dfs(i);    //вызываем поиск в глубину для каждой непосещённой вершины
+            dfs(i, adjacency_list, edges_isthmuses);    //вызываем поиск в глубину для каждой непосещённой вершины
     }
 }
 
@@ -63,16 +70,21 @@ void isthmus(){
 
 void print_adjlist(vector<vector<int>> adjacency_list, int n) {
     for (int i = 0; i < n; i++) {
+        cout << i + 1 << ") ";
         for (int j = 0; j < adjacency_list[i].size(); j++)
-            cout << adjacency_list[i][j] << " ";
+            cout << adjacency_list[i][j] + 1 << " ";
         cout << endl;
     }
 }
 
-void read_adjlist(int n, int m) {
-    cin >> n;
-    cin >> m;// количество рёбер
-    for(int i=0; i<m; i++) {
+void print_edges_isthmuses(vector<pair<int, int>> edges_isthmuses){
+    for (int i = 0; i < edges_isthmuses.size(); i++)
+        cout << edges_isthmuses[i].first << " " << edges_isthmuses[i].second << endl;
+}
+
+void read_adjlist(vector<vector<int>>& adjacency_list, int n, int m) {
+    // m - количество рёбер
+    for(int i = 0; i < m; i++) {
         int a, b;
         cin >> a >> b;
         a--;
@@ -82,12 +94,13 @@ void read_adjlist(int n, int m) {
     }
 }
 
+
 int GetRandomNumber(int min, int max) {
     int num = min + rand() % (max - min + 1); // Получить случайное число - формула
     return num;
 }
 
-void generate_adjlist(int n, int m) {
+void generate_adjlist(vector<vector<int>>& adjacency_list, int n, int m) {
     int tmp[n][n];
     for (int i = 0; i < n; i++)
         for(int j = 0; j < n; j++)
@@ -104,84 +117,93 @@ void generate_adjlist(int n, int m) {
         tmp[a][b] = 1;
     }
 
-    /*
-    cout << "******" << endl;
+}
+
+void generate_bipartite(vector<vector<int>>& adjacency_list, int n, int m) {
+    vector<int> l;
+    vector<int> r;
+    int sizeofl = GetRandomNumber(2, n - 2);
+    int sizeofr = n - sizeofl;
+    vector<int> flag(n, 0);
+    for (int i = 0; i < sizeofl; i++){
+        int f;
+        do {
+            f = GetRandomNumber(0, n - 1);
+        } while (flag[f] != 0);
+        l.push_back(f);
+        flag[f] = 1;
+    }
     for (int i = 0; i < n; i++) {
+        if (flag[i] == 0)
+            r.push_back(i);
+    }
+
+    int tmp[n][n];
+    for (int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++)
+            i != j ? tmp[i][j] = 0 : tmp[i][j] = 1;
+
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        do {
+            a = l[GetRandomNumber(0, sizeofl - 1)];
+            b = r[GetRandomNumber(0, sizeofr - 1)];
+        } while (tmp[a][b] != 0);
+        adjacency_list[a].push_back(b);
+        adjacency_list[b].push_back(a);
+        tmp[a][b] = 1;
+    }
+}
+
+void build_additional(vector<vector<int>>& adjacency_list, int n) {
+    int tmp[n][n];
+    for (int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++)
+            i != j ? tmp[i][j] = 0 : tmp[i][j] = 1;
+    for (int i = 0; i < n; i++)
         for (int j = 0; j < adjacency_list[i].size(); j++)
-            cout << adjacency_list[i][j] << " ";
-        cout << endl;
-    }
-    cout << "****" << endl;
-    */
+            tmp[i][adjacency_list[i][j]] = 1;
+    clear_adjlist(adjacency_list, n);
+    for (int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++)
+            if (tmp[i][j] == 0)
+                adjacency_list[i].push_back(j);
 }
 
 
-std::vector<std::vector<int>> generateBipartiteGraph(int numVertices, int numEdges) {
-
-    // Инициализация списка смежности
-    std::vector<std::vector<int>> adjacencyList(numVertices);
-
-    // Заполняем векторы вершин значениями от 0 до numVertices-1
-    std::vector<int> leftVertices(numVertices);
-    std::vector<int> rightVertices(numVertices);
-    for (int i = 0; i < numVertices; ++i) {
-        leftVertices[i] = i;
-        rightVertices[i] = i;
-    }
-
-    // Используем генератор случайных чисел
-    std::random_device rd;
-    std::mt19937 gen(rd());
-
-    // Перемешиваем вершины в обоих долях
-    std::shuffle(leftVertices.begin(), leftVertices.end(), gen);
-    std::shuffle(rightVertices.begin(), rightVertices.end(), gen);
-
-    // Генерируем рёбра и записываем в список смежности
-    for (int i = 0; i < numEdges; ++i) {
-        int leftVertex = leftVertices[i % numVertices];
-        int rightVertex = rightVertices[i % numVertices];
-
-        adjacencyList[leftVertex].push_back(rightVertex);
-        adjacencyList[rightVertex].push_back(leftVertex);
-    }
-
-    return adjacencyList;
-}
-
-
-void test(int count, int step) {
-    for (int i = 0; i < count; i += step){
-        generate_adjlist(n, n/2);
+void test(vector<vector<int>>& adjacency_list, vector<pair<int, int>>& edges_isthmuses, int count, int step) {
+    for (int i = 10; i < count; i += step){
+        generate_adjlist(adjacency_list, i, i/2);
 
         auto begin = std::chrono::steady_clock::now();
-        isthmus();
+        isthmus(adjacency_list, edges_isthmuses, i);
         auto end = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-        std::cout << i << " " << elapsed.count() << " ms" << std::endl;
-        for (int j = 0; j < SIZE; j++)
-            adjacency_list[j].clear();
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+        std::cout << i << " " << edges_isthmuses.size() << " " << elapsed.count() << " microseconds" << std::endl;
+        //cout << "adjacency_list" << endl;
+        //print_adjlist(adjacency_list, i);
+        //cout << "isthmuses" << endl;
+        //print_edges_isthmuses(edges_isthmuses);
+        //cout << "____________________" << endl;
+        clear_adjlist(adjacency_list, i);
     }
 }
 
-
+vector<vector<int>> adjacency_list (SIZE);    //список смежности
+vector<pair<int, int>> edges_isthmuses;
+int n;
 
 int main() {
     srand(time(NULL));
-    n=5;
-    test(6, 1);
+    //test(adjacency_list, edges_isthmuses, 100, 10);
+    n = 5;
+    //generate_adjlist(adjacency_list, n, 3);
+    //print_adjlist(adjacency_list, n);
+    //clear_adjlist(adjacency_list, n);
+    //cout << endl;
+    //isthmus(adjacency_list, edges_isthmuses, n);
+    //test(adjacency_list, edges_isthmuses, 100, 10);
 
-
-    /*
-
-    5
-    5
-    1 2
-    2 3
-    1 3
-    2 4
-    5 4
-    */
     return 0;
 }
 
