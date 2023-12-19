@@ -70,7 +70,7 @@ void isthmus(vector<vector<int>>& adjacency_list, vector<pair<int, int>>& edges_
 
 void print_adjlist(vector<vector<int>> adjacency_list, int n) {
     for (int i = 0; i < n; i++) {
-        cout << i + 1 << ") ";
+        cout << i + 1 << ": ";
         for (int j = 0; j < adjacency_list[i].size(); j++)
             cout << adjacency_list[i][j] + 1 << " ";
         cout << endl;
@@ -155,6 +155,129 @@ void generate_bipartite(vector<vector<int>>& adjacency_list, int n, int m) {
     }
 }
 
+void generate_adjlist_pr(vector<vector<int>>& adjacency_list, int n, int probability) {
+    int tmp[n][n];
+    for (int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++)
+            i != j ? tmp[i][j] = 0 : tmp[i][j] = 1;
+    int m = n * n;
+    for (int i = 0; i < m; i++) {
+        if (GetRandomNumber(0, 100) < probability) {
+            int a = GetRandomNumber(0, n - 1);
+            int b = GetRandomNumber(0, n - 1);
+            while (tmp[a][b] != 0) {
+                a = GetRandomNumber(0, n - 1);
+                b = GetRandomNumber(0, n - 1);
+            }
+            adjacency_list[a].push_back(b);
+            adjacency_list[b].push_back(a);
+            tmp[a][b] = 1;
+        }
+    }
+
+}
+
+void generate_bipartite_pr(vector<vector<int>>& adjacency_list, int n, int probability) {
+    vector<int> l;
+    vector<int> r;
+    int sizeofl = GetRandomNumber(2, n - 2);
+    int sizeofr = n - sizeofl;
+    vector<int> flag(n, 0);
+    for (int i = 0; i < sizeofl; i++){
+        int f;
+        do {
+            f = GetRandomNumber(0, n - 1);
+        } while (flag[f] != 0);
+        l.push_back(f);
+        flag[f] = 1;
+    }
+    for (int i = 0; i < n; i++) {
+        if (flag[i] == 0)
+            r.push_back(i);
+    }
+
+    int tmp[n][n];
+    for (int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++)
+            i != j ? tmp[i][j] = 0 : tmp[i][j] = 1;
+
+    int m = sizeofl * sizeofr;
+    for (int i = 0; i < m; i++) {
+        if (GetRandomNumber(0, 100) < probability) {
+            int a, b;
+            do {
+                a = l[GetRandomNumber(0, sizeofl - 1)];
+                b = r[GetRandomNumber(0, sizeofr - 1)];
+            } while (tmp[a][b] != 0);
+            adjacency_list[a].push_back(b);
+            adjacency_list[b].push_back(a);
+            tmp[a][b] = 1;
+        }
+    }
+}
+
+void generate_chordal_pr(vector<vector<int>>& adjacency_list, int n, int probability) {
+    int tmp[n][n];
+    for (int i = 0; i < n; i++)
+        for(int j = 0; j < n; j++)
+            i != j ? tmp[i][j] = 0 : tmp[i][j] = 1;
+
+    for (int a = 1; a < n; a++){
+        int b;
+        do {
+            b = GetRandomNumber(0, a - 1);
+        } while (tmp[a][b] != 0);
+        if (GetRandomNumber(0, 100) < probability){
+            for (int i = 0; i < adjacency_list[b].size(); i++){
+                if (tmp[a][adjacency_list[b][i]] == 0){
+                    adjacency_list[a].push_back(adjacency_list[b][i]);
+                    adjacency_list[adjacency_list[b][i]].push_back(a);
+                    tmp[a][adjacency_list[b][i]] = 1;
+                }
+            }
+        }
+        adjacency_list[a].push_back(b);
+        adjacency_list[b].push_back(a);
+        tmp[a][b] = 1;
+    }
+}
+
+void generate_split_pr(vector<vector<int>>& adjacency_list, int n, int probability) {
+    generate_bipartite_pr(adjacency_list, n, probability);
+
+    vector<int> l;
+    vector<int> r;
+    vector<int> side_list (n, 0);
+
+    for (int i = 0; i < n; i++) {
+        int fl = 0;
+        if (side_list[i] == 1)
+            fl = 1;
+        for (int j = 0; j < adjacency_list[i].size(); j++) {
+            side_list[adjacency_list[i][j]] = abs(fl - 1);
+        }
+    }
+    for (int i = 0; i < n; i++) {
+        if (side_list[i] == 0) l.push_back(i);
+        if (side_list[i] == 1) r.push_back(i);
+    }
+
+    int full_side = l.size();
+    int f = 0;
+    if (GetRandomNumber(0, 1) == 1) {
+        full_side = r.size();
+        f = 1;
+    }
+    for (int i = 0; i < full_side; i++) {
+        for (int j = 0; j < full_side; j++){
+            if (i != j) {
+                if (f == 0) adjacency_list[l[i]].push_back(l[j]);
+                if (f == 1) adjacency_list[r[i]].push_back(r[j]);
+            }
+        }
+    }
+}
+
 void build_additional(vector<vector<int>>& adjacency_list, int n) {
     int tmp[n][n];
     for (int i = 0; i < n; i++)
@@ -203,6 +326,8 @@ int main() {
     //cout << endl;
     //isthmus(adjacency_list, edges_isthmuses, n);
     //test(adjacency_list, edges_isthmuses, 100, 10);
+    generate_split_pr(adjacency_list, 7, 40);
+    print_adjlist(adjacency_list, 7);
 
     return 0;
 }
