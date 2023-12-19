@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <random>
+#include <string>
 
 const int INF = 10000;
 const int SIZE = 10005;
@@ -115,6 +116,7 @@ void generate_adjlist(vector<vector<int>>& adjacency_list, int n, int m) {
         adjacency_list[a].push_back(b);
         adjacency_list[b].push_back(a);
         tmp[a][b] = 1;
+        tmp[b][a] = 1;
     }
 
 }
@@ -160,7 +162,7 @@ void generate_adjlist_pr(vector<vector<int>>& adjacency_list, int n, int probabi
     for (int i = 0; i < n; i++)
         for(int j = 0; j < n; j++)
             i != j ? tmp[i][j] = 0 : tmp[i][j] = 1;
-    int m = n * n;
+    int m = n * (n - 1) / 2;
     for (int i = 0; i < m; i++) {
         if (GetRandomNumber(0, 100) < probability) {
             int a = GetRandomNumber(0, n - 1);
@@ -172,6 +174,7 @@ void generate_adjlist_pr(vector<vector<int>>& adjacency_list, int n, int probabi
             adjacency_list[a].push_back(b);
             adjacency_list[b].push_back(a);
             tmp[a][b] = 1;
+            tmp[b][a] = 1;
         }
     }
 
@@ -212,6 +215,7 @@ void generate_bipartite_pr(vector<vector<int>>& adjacency_list, int n, int proba
             adjacency_list[a].push_back(b);
             adjacency_list[b].push_back(a);
             tmp[a][b] = 1;
+            tmp[b][a] = 1;
         }
     }
 }
@@ -239,6 +243,7 @@ void generate_chordal_pr(vector<vector<int>>& adjacency_list, int n, int probabi
         adjacency_list[a].push_back(b);
         adjacency_list[b].push_back(a);
         tmp[a][b] = 1;
+        tmp[b][a] = 1;
     }
 }
 
@@ -294,22 +299,40 @@ void build_additional(vector<vector<int>>& adjacency_list, int n) {
 }
 
 
-void test(vector<vector<int>>& adjacency_list, vector<pair<int, int>>& edges_isthmuses, int count, int step) {
-    for (int i = 10; i < count; i += step){
-        generate_adjlist(adjacency_list, i, i/2);
+void test(vector<vector<int>>& adjacency_list, vector<pair<int, int>>& edges_isthmuses, int start, int count, int step, int prob_start, int prob_cnt, int prob_step, string func) {
+    for (int j = prob_start; j <= prob_cnt; j += prob_step) {
+        cout << func << ", probability = " << j << endl;
+        for (int i = start; i <= count; i += step) {
+            if (func == "adjlist_pr")
+                generate_adjlist_pr(adjacency_list, i, j);
+            if (func == "bipartite_pr")
+                generate_bipartite_pr(adjacency_list, i, j);
+            if (func == "bipartite_pr_additional") {
+                generate_bipartite_pr(adjacency_list, i, j);
+                build_additional(adjacency_list, i);
+            }
+            if (func == "chordal_pr")
+                generate_chordal_pr(adjacency_list, i, j);
+            if (func == "split_pr")
+                generate_split_pr(adjacency_list, i, j);
 
-        auto begin = std::chrono::steady_clock::now();
-        isthmus(adjacency_list, edges_isthmuses, i);
-        auto end = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-        std::cout << i << " " << edges_isthmuses.size() << " " << elapsed.count() << " microseconds" << std::endl;
-        //cout << "adjacency_list" << endl;
-        //print_adjlist(adjacency_list, i);
-        //cout << "isthmuses" << endl;
-        //print_edges_isthmuses(edges_isthmuses);
-        //cout << "____________________" << endl;
-        clear_adjlist(adjacency_list, i);
+            auto begin = std::chrono::steady_clock::now();
+            isthmus(adjacency_list, edges_isthmuses, i);
+            auto end = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+            std::cout << i << " " << edges_isthmuses.size() << " " << elapsed.count() << " microseconds" << std::endl;
+            clear_adjlist(adjacency_list, i);
+        }
+        cout << "__________" << endl << endl;
     }
+}
+
+void tests(vector<vector<int>>& adjacency_list, vector<pair<int, int>>& edges_isthmuses, int start, int count, int step, int prob_start, int prob_cnt, int prob_step) {
+    test(adjacency_list, edges_isthmuses, start, count, step, prob_start, prob_cnt, prob_step, "adjlist_pr");
+    test(adjacency_list, edges_isthmuses, start, count, step, prob_start, prob_cnt, prob_step, "bipartite_pr");
+    test(adjacency_list, edges_isthmuses, start, count, step, prob_start, prob_cnt, prob_step, "bipartite_pr_additional");
+    test(adjacency_list, edges_isthmuses, start, count, step, prob_start, prob_cnt, prob_step, "chordal_pr");
+    test(adjacency_list, edges_isthmuses, start, count, step, prob_start, prob_cnt, prob_step, "split_pr");
 }
 
 vector<vector<int>> adjacency_list (SIZE);    //список смежности
@@ -326,9 +349,9 @@ int main() {
     //cout << endl;
     //isthmus(adjacency_list, edges_isthmuses, n);
     //test(adjacency_list, edges_isthmuses, 100, 10);
-    generate_split_pr(adjacency_list, 7, 40);
-    print_adjlist(adjacency_list, 7);
 
+    tests(adjacency_list, edges_isthmuses, 10, 500, 10, 5, 15, 10);
+    tests(adjacency_list, edges_isthmuses, 10, 500, 10, 85, 95, 10);
     return 0;
 }
 
